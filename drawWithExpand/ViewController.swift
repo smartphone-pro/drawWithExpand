@@ -47,21 +47,21 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
     /**
      拡大縮小に対応
      */
-    func viewForZoomingInScrollView(scrollView: UIScrollView) -> UIView? {
+    func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return self.canvasView
     }
     
     /**
      UIGestureRecognizerでお絵描き対応。1本指でなぞった時のみの対応とする。
      */
-    private func prepareDrawing() {
+    fileprivate func prepareDrawing() {
         
         //実際のお絵描きで言う描く手段(色えんぴつ？クレヨン？絵の具？など)の準備
         let myDraw = UIPanGestureRecognizer(target: self, action: #selector(ViewController.drawGesture(_:)))
         myDraw.maximumNumberOfTouches = 1
         self.scrollView.addGestureRecognizer(myDraw)
         
-        drawColor = UIColor.blackColor()                    //draw色を黒色に決定する
+        drawColor = UIColor.black                    //draw色を黒色に決定する
         lineWidth = CGFloat(sliderValue.value) * scale      //線の太さを決定する
         
         //実際のお絵描きで言うキャンバスの準備 (=何も描かれていないUIImageの作成)
@@ -75,15 +75,15 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      キャンバスの準備 (何も描かれていないUIImageの作成)
      */
     func prepareCanvas() {
-        let canvasSize = CGSizeMake(view.frame.width * 2, view.frame.width * 2)     //キャンバスのサイズの決定
-        let canvasRect = CGRectMake(0, 0, canvasSize.width, canvasSize.height)      //キャンバスのRectの決定
+        let canvasSize = CGSize(width: view.frame.width * 2, height: view.frame.width * 2)     //キャンバスのサイズの決定
+        let canvasRect = CGRect(x: 0, y: 0, width: canvasSize.width, height: canvasSize.height)      //キャンバスのRectの決定
         UIGraphicsBeginImageContextWithOptions(canvasSize, false, 0.0)              //コンテキスト作成(キャンバスのUIImageを作成する為)
         var firstCanvasImage = UIImage()                                            //キャンバス用UIImage(まだ空っぽ)
-        UIColor.whiteColor().setFill()                                              //白色塗りつぶし作業1
+        UIColor.white.setFill()                                              //白色塗りつぶし作業1
         UIRectFill(canvasRect)                                                      //白色塗りつぶし作業2
-        firstCanvasImage.drawInRect(canvasRect)                                     //firstCanvasImageの内容を描く(真っ白)
+        firstCanvasImage.draw(in: canvasRect)                                     //firstCanvasImageの内容を描く(真っ白)
         firstCanvasImage = UIGraphicsGetImageFromCurrentImageContext()!              //何も描かれてないUIImageを取得
-        canvasView.contentMode = .ScaleAspectFit                                    //contentModeの設定
+        canvasView.contentMode = .scaleAspectFit                                    //contentModeの設定
         canvasView.image = firstCanvasImage                                         //画面の表示を更新
         UIGraphicsEndImageContext()                                                 //コンテキストを閉じる
     }
@@ -92,7 +92,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
     /**
      draw動作
      */
-    func drawGesture(sender: AnyObject) {
+    @objc func drawGesture(_ sender: AnyObject) {
         
         guard let drawGesture = sender as? UIPanGestureRecognizer else {
             print("drawGesture Error happened.")
@@ -105,10 +105,10 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
 
         //lineWidth = defaultLineWidth                                    //描画用の線の太さを決定する
         //drawColor = UIColor.blackColor()                                //draw色を決定する
-        let touchPoint = drawGesture.locationInView(canvasView)         //タッチ座標を取得
+        let touchPoint = drawGesture.location(in: canvasView)         //タッチ座標を取得
         
         switch drawGesture.state {
-        case .Began:
+        case .began:
             lastPoint = touchPoint                                      //タッチ座標をlastTouchPointとして保存する
 
             //touchPointの座標はscrollView基準なのでキャンバスの大きさに合わせた座標に変換しなければいけない
@@ -120,12 +120,12 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
                 fatalError("bezierPath Error")
             }
             
-            bzrPth.lineCapStyle = .Round                            //描画線の設定 端を丸くする
+            bzrPth.lineCapStyle = .round                            //描画線の設定 端を丸くする
             //bzrPth.lineWidth = defaultLineWidth                     //描画線の太さ
             bzrPth.lineWidth = lineWidth!                           //描画線の太さ
-            bzrPth.moveToPoint(lastPointForCanvasSize)
+            bzrPth.move(to: lastPointForCanvasSize)
             
-        case .Changed:
+        case .changed:
             
             let newPoint = touchPoint                                   //タッチポイントを最新として保存
             
@@ -139,7 +139,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
             self.canvasView.image = imageAfterDraw                      //Draw画像をCanvasに上書き
             lastPoint = newPoint                                        //Point保存
             
-        case .Ended:
+        case .ended:
 
             //currentDrawNumberとsaveImageArray配列数が矛盾無きまでremoveLastする
             while currentDrawNumber != saveImageArray.count - 1 {
@@ -170,20 +170,20 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      - parameter bezierPath : 線の設定などが保管されたインスタンス
      - returns : 描画後の画像
      */
-    func drawGestureAtChanged(canvas: UIImage, lastPoint: CGPoint, newPoint: CGPoint, bezierPath: UIBezierPath) -> UIImage {
+    func drawGestureAtChanged(_ canvas: UIImage, lastPoint: CGPoint, newPoint: CGPoint, bezierPath: UIBezierPath) -> UIImage {
         
         //最新のtouchPointとlastPointからmiddlePointを算出
-        let middlePoint = CGPointMake((lastPoint.x + newPoint.x) / 2, (lastPoint.y + newPoint.y) / 2)
+        let middlePoint = CGPoint(x: (lastPoint.x + newPoint.x) / 2, y: (lastPoint.y + newPoint.y) / 2)
         
         //各ポイントの座標はscrollView基準なのでキャンバスの大きさに合わせた座標に変換しなければいけない
         //各ポイントをキャンバスサイズ基準にConvert
         let middlePointForCanvas = convertPointForCanvasSize(originalPoint: middlePoint, canvasSize: canvas.size)
         let lastPointForCanvas   = convertPointForCanvasSize(originalPoint: lastPoint, canvasSize: canvas.size)
         
-        bezierPath.addQuadCurveToPoint(middlePointForCanvas, controlPoint: lastPointForCanvas)  //曲線を描く
+        bezierPath.addQuadCurve(to: middlePointForCanvas, controlPoint: lastPointForCanvas)  //曲線を描く
         UIGraphicsBeginImageContextWithOptions(canvas.size, false, 0.0)                 //コンテキストを作成
-        let canvasRect = CGRectMake(0, 0, canvas.size.width, canvas.size.height)        //コンテキストのRect
-        self.canvasView.image?.drawInRect(canvasRect)                                   //既存のCanvasを準備
+        let canvasRect = CGRect(x: 0, y: 0, width: canvas.size.width, height: canvas.size.height)        //コンテキストのRect
+        self.canvasView.image?.draw(in: canvasRect)                                   //既存のCanvasを準備
         drawColor.setStroke()                                                           //drawをセット
         bezierPath.stroke()                                                             //draw実行
         let imageAfterDraw = UIGraphicsGetImageFromCurrentImageContext()                //Draw後の画像
@@ -199,11 +199,11 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      - parameter canvasSize : キャンバスのサイズ
      - returns : キャンバス基準に変換した座標
      */
-    func convertPointForCanvasSize(originalPoint originalPoint: CGPoint, canvasSize: CGSize) -> CGPoint {
+    func convertPointForCanvasSize(originalPoint: CGPoint, canvasSize: CGSize) -> CGPoint {
         
         let viewSize = scrollView.frame.size
         var ajustContextSize = canvasSize
-        var diffSize: CGSize = CGSizeMake(0, 0)
+        var diffSize: CGSize = CGSize(width: 0, height: 0)
         let viewRatio = viewSize.width / viewSize.height
         let contextRatio = canvasSize.width / canvasSize.height
         let isWidthLong = viewRatio < contextRatio ? true : false
@@ -220,8 +220,8 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
             
         }
         
-        let convertPoint = CGPointMake(originalPoint.x * ajustContextSize.width / viewSize.width - diffSize.width,
-                                       originalPoint.y * ajustContextSize.height / viewSize.height - diffSize.height)
+        let convertPoint = CGPoint(x: originalPoint.x * ajustContextSize.width / viewSize.width - diffSize.width,
+                                       y: originalPoint.y * ajustContextSize.height / viewSize.height - diffSize.height)
         
         
         return convertPoint
@@ -232,27 +232,27 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      Redボタンを押した時の動作
      ペンを赤色にする
      */
-    @IBAction func selectRed(sender: AnyObject) {
+    @IBAction func selectRed(_ sender: AnyObject) {
         
-        drawColor = UIColor.redColor()      //赤色に変更する
+        drawColor = UIColor.red      //赤色に変更する
     }
 
     /**
      Greenボタンを押した時の動作
      ペンを緑色にする
      */
-    @IBAction func selectGreen(sender: AnyObject) {
+    @IBAction func selectGreen(_ sender: AnyObject) {
         
-        drawColor = UIColor.greenColor()    //緑色に変更する
+        drawColor = UIColor.green    //緑色に変更する
     }
 
     /**
      Blueボタンを押した時の動作
      ペンを青色にする
      */
-    @IBAction func selectBlue(sender: AnyObject) {
+    @IBAction func selectBlue(_ sender: AnyObject) {
         
-        drawColor = UIColor.blueColor()     //青色に変更する
+        drawColor = UIColor.blue     //青色に変更する
         
     }
 
@@ -260,16 +260,16 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      Blackボタンを押した時の動作
      ペンを黒色にする
      */
-    @IBAction func selecBlack(sender: AnyObject) {
+    @IBAction func selecBlack(_ sender: AnyObject) {
         
-        drawColor = UIColor.blackColor()    //黒色に変更する
+        drawColor = UIColor.black    //黒色に変更する
     }
 
     /**
      スライダーを動かした時の動作
      ペンの太さを変更する
      */
-    @IBAction func slideSlider(sender: AnyObject) {
+    @IBAction func slideSlider(_ sender: AnyObject) {
         
         lineWidth = CGFloat(sliderValue.value) * scale
  
@@ -279,7 +279,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      Undoボタンを押した時の動作
      Undoを実行する
      */
-    @IBAction func pressUndoButton(sender: AnyObject) {
+    @IBAction func pressUndoButton(_ sender: AnyObject) {
         
         if currentDrawNumber <= 0 {return}
         
@@ -293,7 +293,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      Redoボタンを押した時の動作
      Redoを実行する
      */
-    @IBAction func pressRedoButton(sender: AnyObject) {
+    @IBAction func pressRedoButton(_ sender: AnyObject) {
         
         if currentDrawNumber + 1 > saveImageArray.count - 1 {return}
         
@@ -307,7 +307,7 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      Saveボタンを押した時の動作
      お絵描きをカメラロールへ保存する
      */
-    @IBAction func pressSaveButton(sender: AnyObject) {
+    @IBAction func pressSaveButton(_ sender: AnyObject) {
         
         UIImageWriteToSavedPhotosAlbum(self.canvasView.image!, self, nil, nil)  //カメラロールへの保存
         
@@ -317,41 +317,41 @@ class ViewController: UIViewController, UIScrollViewDelegate, UIDocumentInteract
      Instagramボタンを押した時の動作
      URLスキームを使ってInstagramアプリのライブラリ画面を表示する
      */
-    @IBAction func pressInstagramButton(sender: AnyObject) {
- 
+    @IBAction func pressInstagramButton(_ sender: AnyObject) {
+        
         var imageIdentifier: String?
-        PHPhotoLibrary.sharedPhotoLibrary().performChanges({ () -> Void in
-            let createAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromImage(self.canvasView.image!)
+        PHPhotoLibrary.shared().performChanges({ () -> Void in
+            let createAssetRequest = PHAssetChangeRequest.creationRequestForAsset(from: self.canvasView.image!)
             let placeHolder = createAssetRequest.placeholderForCreatedAsset
             imageIdentifier = placeHolder!.localIdentifier
-            }, completionHandler: { (success, error) -> Void in
-                print("Finished adding asset.\(success ? "success" : "error")")
-                print("\(imageIdentifier)")
-                let testURL = NSURL(string: "instagram://library?LocalIdentifier=" + imageIdentifier!)
-                if UIApplication.sharedApplication().canOpenURL(testURL!) {
-                    UIApplication.sharedApplication().openURL(testURL!)
-                }
+        }, completionHandler: { (success, error) -> Void in
+            print("Finished adding asset.\(success ? "success" : "error")")
+            print(imageIdentifier ?? "")
+            let testURL = URL(string: "instagram://library?LocalIdentifier=" + imageIdentifier!)
+            if UIApplication.shared.canOpenURL(testURL!) {
+                UIApplication.shared.openURL(testURL!)
+            }
         })
         
     }
 
-    @IBAction func pressOpenIn(sender: AnyObject) {
+    @IBAction func pressOpenIn(_ sender: AnyObject) {
         let imageData = UIImageJPEGRepresentation(self.canvasView.image!, 1.0)
         let tmpDirectoryPath = NSTemporaryDirectory()   //tmpディレクトリを取得
         let imageName = "tmp.jpg"
         let imagePath = tmpDirectoryPath + imageName
-        let imageURLForOptionMenu = NSURL(fileURLWithPath: imagePath)
+        let imageURLForOptionMenu = URL(fileURLWithPath: imagePath)
         
         do {
-            try imageData?.writeToURL(imageURLForOptionMenu, options: .AtomicWrite)
+            try imageData?.write(to: imageURLForOptionMenu, options: .atomicWrite)
         } catch {
             fatalError("can't save image to tmp directory.")
         }
         
-        interactionController = UIDocumentInteractionController(URL: imageURLForOptionMenu)
+        interactionController = UIDocumentInteractionController(url: imageURLForOptionMenu)
         interactionController?.delegate = self
-        self.interactionController?.UTI = "public.jpg"
-        interactionController?.presentOptionsMenuFromRect(self.view.frame, inView: self.view, animated: true)
+        self.interactionController?.uti = "public.jpg"
+        interactionController?.presentOptionsMenu(from: self.view.frame, in: self.view, animated: true)
     }
     
 }
